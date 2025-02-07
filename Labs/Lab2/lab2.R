@@ -112,6 +112,3 @@ cat("\n=== R-squared ===\n")
 cat("Model1 R^2:", summary(model1)$r.squared, "\n")
 cat("Model2 R^2:", summary(model2)$r.squared, "\n")
 cat("Model3 R^2:", summary(model3)$r.squared, "\n")
-
-# Use these metrics (and your domain knowledge) to decide which model is best
-############################################################
