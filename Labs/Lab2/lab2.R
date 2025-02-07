@@ -1,11 +1,6 @@
-############################################################
-# 1. DATA LOADING & BASIC CLEANING
-############################################################
 
-# Read CSV (change the file path as needed)
 df <- read.csv("NY-House-Dataset.csv", stringsAsFactors = FALSE)
 
-# Convert columns to numeric if they are not already
 df$PRICE <- as.numeric(df$PRICE)
 df$BEDS  <- as.numeric(df$BEDS)
 df$BATH  <- as.numeric(df$BATH)
@@ -20,12 +15,7 @@ df_clean <- subset(df,
 # Inspect summaries
 summary(df_clean[, c("PRICE", "BEDS", "BATH", "PROPERTYSQFT")])
 
-############################################################
-# 2. REMOVE EXTREME OUTLIERS (OPTIONAL)
-############################################################
-# Example: using 3×IQR on PRICE and PROPERTYSQFT
-# Feel free to adjust thresholds or skip this if it removes too many rows.
-
+# Remove any extreme outliers
 Q1_price <- quantile(df_clean$PRICE, 0.25)
 Q3_price <- quantile(df_clean$PRICE, 0.75)
 IQR_price <- Q3_price - Q1_price
@@ -39,13 +29,8 @@ upper_sqft <- Q3_sqft + 3 * IQR_sqft
 df_clean <- subset(df_clean,
                    PRICE <= upper_price & PROPERTYSQFT <= upper_sqft)
 
-# Alternatively, consider a log transform if needed:
-# df_clean$logPRICE <- log(df_clean$PRICE)
-# df_clean$logSQFT  <- log(df_clean$PROPERTYSQFT)
 
-############################################################
-# 3. FIT THREE MODELS
-############################################################
+#Fitting the 3 models
 # Model 1: PRICE ~ PROPERTYSQFT
 model1 <- lm(PRICE ~ PROPERTYSQFT, data = df_clean)
 
@@ -55,9 +40,6 @@ model2 <- lm(PRICE ~ PROPERTYSQFT + BEDS, data = df_clean)
 # Model 3: PRICE ~ PROPERTYSQFT + BEDS + BATH
 model3 <- lm(PRICE ~ PROPERTYSQFT + BEDS + BATH, data = df_clean)
 
-############################################################
-# 4. PRINT MODEL SUMMARIES
-############################################################
 cat("\n=== Model 1 Summary ===\n")
 summary(model1)
 
@@ -67,15 +49,6 @@ summary(model2)
 cat("\n=== Model 3 Summary ===\n")
 summary(model3)
 
-############################################################
-# 5. PLOTS
-#    a) Scatter plot Price vs. (most significant) predictor 
-#       + best fit line
-#    b) Residuals vs. Fitted for each model
-############################################################
-
-# For each model, choose the strongest predictor from the summary output
-# (often 'PROPERTYSQFT' is a main driver, but check summary p-values).
 
 # === Model 1 Plots ===
 par(mfrow = c(1, 2))   # 2 plots side-by-side
@@ -128,10 +101,6 @@ lines(new_sqft2$PROPERTYSQFT, pred_vals2, col="red", lwd=2)
 
 # (b) Residuals vs Fitted
 plot(model3, which = 1, main = "Model 3: Residuals vs Fitted")
-
-############################################################
-# 6. COMPARE MODELS
-############################################################
 
 cat("\n=== AIC Comparison ===\n")
 AIC(model1, model2, model3)
