@@ -50,7 +50,6 @@ ggplot(dataset, aes(x = log10(PROPERTYSQFT), y = log10(PRICE))) +
 dataset <- dataset[dataset$BEDS > 0 & dataset$BATH > 0, ]
 
 # Create new columns for log–transformed Price and PropertySqFt.
-# (Transforming these variables often produces a better linear relationship.)
 dataset$logPRICE <- log10(dataset$PRICE)
 dataset$logSqFt  <- log10(dataset$PROPERTYSQFT)
 
