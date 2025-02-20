@@ -91,6 +91,7 @@ plot(m2_EE$residuals, main="Residuals of Model 2 - Eastern Europe")
 
 
 # ====Classification====
+# 1. Subset data for 2 regions and 3 variables
 
 df1 <- subset(EPI_data, region %in% c("Eastern Europe", "Global West"),
               select = c("region","EPI.new","BDH.new","ECO.new"))
@@ -116,10 +117,7 @@ for(kval in c(1,3,5)) {
   cat("Accuracy =", acc1, "\n")
 }
 
-# --------------------
-# 2) Repeat with 3 other variables
-#    Example: "MHP.new", "TBN.new", "PAE.new"
-# --------------------
+# 2. Repeat with 3 other variables
 df2 <- subset(EPI_data, region %in% c("Eastern Europe", "Global West"),
               select = c("region","MHP.new","TBN.new","PAE.new"))
 df2 <- na.omit(df2)
@@ -143,3 +141,6 @@ for(kval in c(1,3,5)) {
   cat("Accuracy =", acc2, "\n")
 }
 
+# The models with "EPI.new","BDH.new","ECO.new" as the 3 variables is better than the models with "MHP.new","TBN.new","PAE.new".
+# The model1 models have a higher accuracy than Model 2. The first set of variables appears more predictive for classifying the region.
+#
