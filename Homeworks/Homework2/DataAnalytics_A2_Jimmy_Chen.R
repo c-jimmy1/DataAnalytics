@@ -1,5 +1,5 @@
 library(class)
-
+library(ggplot2)
 # Load Data
 EPI_data <- read.csv("epi_results_2024_pop_gdp.csv")
 
@@ -109,13 +109,26 @@ testX1  <- test1[, c("EPI.new","BDH.new","ECO.new")]
 testY1  <- test1$region
 
 # Try different k values:
-for(kval in c(1,3,5)) {
+kvals <- c(1, 3, 5)
+acc1_list <- numeric(length(kvals))    # to store accuracies
+
+cat("== KNN RESULTS for df1 ==\n")
+
+for (i in seq_along(kvals)) {
+  kval <- kvals[i]
   pred1 <- knn(trainX1, testX1, cl = trainY1, k = kval)
-  cat("\nModel1 (k=",kval,") Confusion Matrix:\n", sep="")
-  print(table(Predicted=pred1, Actual=testY1))
+  
+  cat("\nModel1 (k =", kval, ") Confusion Matrix:\n")
+  cm1 <- table(Predicted = pred1, Actual = testY1)
+  print(cm1)
+  
   acc1 <- mean(pred1 == testY1)
+  acc1_list[i] <- acc1
   cat("Accuracy =", acc1, "\n")
 }
+
+cat("\nAccuracies for df1 with different k:\n")
+print(data.frame(k = kvals, Accuracy = acc1_list))
 
 # 2. Repeat with 3 other variables
 df2 <- subset(EPI_data, region %in% c("Eastern Europe", "Global West"),
@@ -133,14 +146,56 @@ trainY2 <- train2$region
 testX2  <- test2[, c("MHP.new","TBN.new","PAE.new")]
 testY2  <- test2$region
 
-for(kval in c(1,3,5)) {
+acc2_list <- numeric(length(kvals))
+
+cat("\n== KNN RESULTS for df2 ==\n")
+
+for (i in seq_along(kvals)) {
+  kval <- kvals[i]
   pred2 <- knn(trainX2, testX2, cl = trainY2, k = kval)
-  cat("\nModel2 (k=",kval,") Confusion Matrix:\n", sep="")
-  print(table(Predicted=pred2, Actual=testY2))
+  
+  cat("\nModel2 (k =", kval, ") Confusion Matrix:\n")
+  cm2 <- table(Predicted = pred2, Actual = testY2)
+  print(cm2)
+  
   acc2 <- mean(pred2 == testY2)
+  acc2_list[i] <- acc2
   cat("Accuracy =", acc2, "\n")
 }
 
+cat("\nAccuracies for df2 with different k:\n")
+print(data.frame(k = kvals, Accuracy = acc2_list))
+
+# For df1:
+acc_df1 <- data.frame(
+  k        = factor(kvals),   # make k a factor for discrete axis
+  Accuracy = acc1_list
+)
+
+ggplot(acc_df1, aes(x = k, y = Accuracy)) +
+  geom_col(fill = "steelblue") +
+  geom_text(aes(label = round(Accuracy, 3)), vjust = -0.5, color = "black") +
+  ylim(0, 1) +
+  theme_minimal() +
+  labs(title = "k-NN Accuracies for Different k (df1)",
+       x = "k-value",
+       y = "Accuracy")
+
+# For df2:
+acc_df2 <- data.frame(
+  k        = factor(kvals),
+  Accuracy = acc2_list
+)
+
+ggplot(acc_df2, aes(x = k, y = Accuracy)) +
+  geom_col(fill = "tomato") +
+  geom_text(aes(label = round(Accuracy, 3)), vjust = -0.5, color = "black") +
+  ylim(0, 1) +
+  theme_minimal() +
+  labs(title = "k-NN Accuracies for Different k (df2)",
+       x = "k-value",
+       y = "Accuracy")
+
 # The models with "EPI.new","BDH.new","ECO.new" as the 3 variables is better than the models with "MHP.new","TBN.new","PAE.new".
 # The model1 models have a higher accuracy than Model 2. The first set of variables appears more predictive for classifying the region.
-#
+
