@@ -2,8 +2,6 @@
 # 1. Setup & Data Loading
 ###############################################################################
 
-# If needed, install required packages:
-# install.packages(c("ggplot2", "caret", "dplyr"))
 
 library(ggplot2)
 library(caret)
@@ -62,10 +60,6 @@ ggplot(pca_plot_data, aes(x = PC1, y = PC2, color = Class)) +
 ###############################################################################
 # 4. Identify Variables that Contribute the Most to the 1st PC
 ###############################################################################
-# "Loadings" are in pca_result$rotation. 
-# The magnitude of the loadings tells us how strongly each original variable 
-# contributes to that component.
-
 loadings_pc1 <- pca_result$rotation[, 1]  # loadings for PC1
 
 # Sort variables by absolute loading (descending)
@@ -96,8 +90,6 @@ summary(pca_reduced)
 ###############################################################################
 # 6. Train a Classifier (kNN) on the Original Dataset
 ###############################################################################
-# We'll do a simple train/test split. For more robust results, 
-# consider cross-validation or repeated cross-validation in caret.
 
 set.seed(123)
 train_index <- createDataPartition(wine$Class, p = 0.7, list = FALSE)
@@ -126,10 +118,6 @@ conf_mat_original
 ###############################################################################
 # 7. Train a Classifier using the First 3 Principal Components
 ###############################################################################
-# We'll use the PCA from the full dataset for consistency (pca_result).
-# Normally you'd fit PCA on the training subset only, then apply to test subset, 
-# but for illustration, we'll project both sets here. For a real scenario, 
-# re-fit PCA only on training data to avoid data leakage.
 
 # Extract the first 3 PCs from the full PCA:
 wine_pcs <- as.data.frame(pca_result$x[, 1:3])
@@ -161,33 +149,36 @@ conf_mat_pcs
 # 8. Compare Both Models: Contingency Tables & Precision/Recall/F1
 ###############################################################################
 
-# Each confusion matrix (conf_mat_original, conf_mat_pcs) contains:
-# - Overall statistics (Accuracy, Kappa)
-# - Statistics by Class (Sensitivity, Specificity, etc.)
-# 
-# For multi-class Precision, Recall, and F1, we can calculate them per-class 
-# and then compute a macro-average. Caret’s confusionMatrix includes some 
-# of these, but here’s an example of how to compute them manually:
-
 compute_multiclass_metrics <- function(cm) {
-  # Convert confusion matrix table to a data frame
+  # Convert the confusion matrix table to a data frame
   cm_df <- as.data.frame(cm$table)
   
-  # Ensure Freq is numeric (sometimes it might end up as factor)
-  cm_df$Freq <- as.numeric(cm_df$Freq)
-
-  classes <- levels(cm$reference)
+  # The actual class labels come from cm$levels, not cm$reference
+  classes <- cm$levels
   
+  # Make sure Prediction/Reference columns are factors with these levels
+  cm_df$Prediction <- factor(cm_df$Prediction, levels = classes)
+  cm_df$Reference  <- factor(cm_df$Reference,  levels = classes)
+  
+  # Convert Freq to numeric
+  cm_df$Freq <- as.numeric(as.character(cm_df$Freq))
+  
+  # Calculate metrics per class
   metrics_list <- lapply(classes, function(cl) {
-    # For each class 'cl', compute TP, FP, FN
+    # True Positives: predicted = cl & reference = cl
     TP <- sum(cm_df$Freq[cm_df$Prediction == cl & cm_df$Reference == cl])
+    
+    # False Positives: predicted = cl, reference != cl
     FP <- sum(cm_df$Freq[cm_df$Prediction == cl & cm_df$Reference != cl])
+    
+    # False Negatives: predicted != cl, reference = cl
     FN <- sum(cm_df$Freq[cm_df$Prediction != cl & cm_df$Reference == cl])
     
     precision <- TP / (TP + FP)
     recall    <- TP / (TP + FN)
-    f1        <- ifelse((precision + recall) == 0, 0,
-                        2 * precision * recall / (precision + recall))
+    
+    # Handle potential divide-by-zero for F1
+    f1 <- if ((precision + recall) == 0) 0 else 2 * precision * recall / (precision + recall)
     
     data.frame(
       Class = cl,
@@ -197,19 +188,21 @@ compute_multiclass_metrics <- function(cm) {
     )
   })
   
+  # Combine the class-level results
   metrics_df <- do.call(rbind, metrics_list)
   
-  # Macro-average across classes
+  # Macro-average
   macro_precision <- mean(metrics_df$Precision, na.rm = TRUE)
   macro_recall    <- mean(metrics_df$Recall,    na.rm = TRUE)
   macro_f1        <- mean(metrics_df$F1,        na.rm = TRUE)
   
+  # Return a list with two parts
   list(
     by_class = metrics_df,
     macro_avg = data.frame(
       Precision = macro_precision,
-      Recall = macro_recall,
-      F1 = macro_f1
+      Recall    = macro_recall,
+      F1        = macro_f1
     )
   )
 }
@@ -230,8 +223,3 @@ cat("=== Original Data Model: Macro-Averaged Metrics ===\n")
 print(metrics_original$macro_avg)
 cat("\n=== PCA (3 PCs) Model: Macro-Averaged Metrics ===\n")
 print(metrics_pcs$macro_avg)
-
-###############################################################################
-# End
-###############################################################################
-
