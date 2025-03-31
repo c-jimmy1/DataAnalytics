@@ -29,12 +29,9 @@ ggplot(dataset, aes(x = log10(PROPERTYSQFT), y = log10(PRICE))) +
   ggtitle("Log10(Price) vs. Log10(Square Footage)") +
   xlab("log10(Property Square Footage)") + ylab("log10(Price)")
 
-## 2. Data Cleaning (Optional)
-# For example, remove any identified outlier in square footage
 dataset.sub0 <- dataset[-which(dataset$PROPERTYSQFT == 2184.207862),]
 
 ## 3. Build Regression Models Using log10 transformation
-
 # 3A. Linear Regression Model
 lin.mod <- lm(log10(PRICE) ~ log10(PROPERTYSQFT), data = dataset.sub0)
 summary(lin.mod)
@@ -70,7 +67,6 @@ ggplot(dataset.sub0, aes(x = log10(PROPERTYSQFT), y = log10(PRICE))) +
   geom_line(aes(y = svm.pred.radial), col = "red") +
   ggtitle("SVM Regression (Radial Kernel)")
 
-# Optionally, you can optimize the radial model using tune.svm:
 tuned.svm <- tune.svm(log10(PRICE) ~ log10(PROPERTYSQFT), data = dataset.sub0, 
                       kernel = "radial", 
                       gamma = 10^seq(-3, 2, 1), 
@@ -174,7 +170,7 @@ for(i in 1:k_iter) {
   errors_svmR[i, ] <- c(mean(abs(err_rad)), mean(err_rad^2), sqrt(mean(err_rad^2)))
 }
 
-# Compute average error metrics over all iterations
+# Compute average error metrics over all iterations 
 avg_errors_lm   <- colMeans(errors_lm)
 avg_errors_svmL <- colMeans(errors_svmL)
 avg_errors_svmR <- colMeans(errors_svmR)
