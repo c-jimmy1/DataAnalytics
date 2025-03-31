@@ -38,12 +38,10 @@ print(outliers)
 manhattan.data <- manhattan.data %>% filter(!is.na(SALE.PRICE) & SALE.PRICE > 0)
 
 # Fit a multiple linear regression model
-# (Assume that the dataset has columns: GROSS.SQUARE.FEET, YEAR.BUILT, TOTAL.UNITS)
 model1 <- lm(SALE.PRICE ~ GROSS.SQUARE.FEET + YEAR.BUILT + TOTAL.UNITS, data = manhattan.data)
 summary(model1)
 
 # Test the model on a subset: e.g., the neighborhood "CHELSEA"
-# Ensure that the NEIGHBORHOOD variable is a factor
 manhattan.data$NEIGHBORHOOD <- as.factor(manhattan.data$NEIGHBORHOOD)
 chelsea.data <- manhattan.data %>% filter(NEIGHBORHOOD == "CHELSEA")
 
@@ -67,15 +65,13 @@ ggplot(chelsea.data, aes(x = chelsea.predictions, y = chelsea.residuals)) +
 # ================ 1D =========================
 set.seed(32)
 
-# Remove rows with missing values in SALE.PRICE, GROSS.SQUARE.FEET, YEAR.BUILT, TOTAL.UNITS, and NEIGHBORHOOD
 manhattan.data <- manhattan.data %>% 
   filter(!is.na(SALE.PRICE) & !is.na(GROSS.SQUARE.FEET) & 
            !is.na(YEAR.BUILT) & !is.na(TOTAL.UNITS) & !is.na(NEIGHBORHOOD))
 
-# Ensure GROSS.SQUARE.FEET is numeric
 manhattan.data$GROSS.SQUARE.FEET <- as.numeric(gsub(",", "", manhattan.data$GROSS.SQUARE.FEET))
 
-# Split into training (70%) and testing (30%) sets
+# Split into training 70% and testing 30% sets
 train.indices <- sample(1:nrow(manhattan.data), size = 0.7 * nrow(manhattan.data))
 train.data <- manhattan.data[train.indices, ]
 test.data <- manhattan.data[-train.indices, ]
@@ -87,7 +83,6 @@ conf.nb <- table(test.data$NEIGHBORHOOD, pred.nb)
 print("Confusion Matrix - Naive Bayes:")
 print(conf.nb)
 
-# Helper function to calculate precision and recall for a specific class
 calc.metrics <- function(cm, class) {
   true.positive <- cm[class, class]
   false.positive <- sum(cm[, class]) - true.positive
@@ -96,7 +91,7 @@ calc.metrics <- function(cm, class) {
   recall <- true.positive / (true.positive + false.negative)
   c(Precision = precision, Recall = recall)
 }
-# Example: metrics for "CHELSEA"
+
 metrics.nb <- calc.metrics(conf.nb, "CHELSEA")
 print("Naive Bayes Metrics for CHELSEA:")
 print(metrics.nb)

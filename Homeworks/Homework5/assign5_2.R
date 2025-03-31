@@ -35,7 +35,7 @@ ggplot(queens.data, aes(y = SALE.PRICE)) +
   geom_boxplot(fill = "orange", outlier.color = "red") +
   labs(title = "Boxplot of Sale Price (Manhattan)", y = "Sale Price")
 
-# Identify outlier values using boxplot stats
+# outlier values using boxplot stats
 bp <- boxplot(queens.data$SALE.PRICE, plot = FALSE)
 outliers <- bp$out
 cat("Identified outlier sale prices (Manhattan):\n")
@@ -45,12 +45,9 @@ print(outliers)
 queens.data <- queens.data %>% filter(!is.na(SALE.PRICE) & SALE.PRICE > 0)
 
 # Fit a multiple linear regression model
-# (Assume that the dataset has columns: GROSS.SQUARE.FEET, YEAR.BUILT, TOTAL.UNITS)
 model1 <- lm(SALE.PRICE ~ GROSS.SQUARE.FEET + YEAR.BUILT + TOTAL.UNITS, data = queens.data)
 summary(model1)
 
-# Test the model on a subset: e.g., the neighborhood "ASTORIA"
-# Ensure that the NEIGHBORHOOD variable is a factor
 queens.data$NEIGHBORHOOD <- as.factor(queens.data$NEIGHBORHOOD)
 astoria.data <- queens.data %>% filter(NEIGHBORHOOD == "ASTORIA")
 
@@ -71,10 +68,7 @@ ggplot(astoria.data, aes(x = astoria.predictions, y = astoria.residuals)) +
   labs(title = "Residuals vs. Predicted Sale Price (Astoria)", x = "Predicted Sale Price", y = "Residuals")
 
 # ============================ 2B ===========================
-
 set.seed(32)
-
-# Remove rows with missing values in SALE.PRICE, GROSS.SQUARE.FEET, YEAR.BUILT, TOTAL.UNITS, and NEIGHBORHOOD
 queens.data <- queens.data %>% 
   filter(!is.na(SALE.PRICE) & !is.na(GROSS.SQUARE.FEET) & 
            !is.na(YEAR.BUILT) & !is.na(TOTAL.UNITS) & !is.na(NEIGHBORHOOD))
