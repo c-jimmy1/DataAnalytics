@@ -223,31 +223,29 @@ cat("Summary stats saved to 'plots/summary_stats_cleaned_indicators.csv'\n")
 # ===============================================================
 # 4. Model Development and Application of model(s)
 # ===============================================================
-## ────────────────────────────────────────────────────────────────────
-## 4.  Modelling  – Life Expectancy
-## ────────────────────────────────────────────────────────────────────
+# 4·A: Split & Resamples
 df_model <- df_trans %>%
   select(country, year,
-         life_expectancy_z,
          log_gdp_per_capita_z,
          log_health_exp_per_capita_z,
-         adult_literacy_rate_z,
          poverty_headcount_z,
+         life_expectancy_z,
+         infant_mortality_z,
+         adult_literacy_rate_z,
          primary_school_enrolment_z) %>%
   drop_na()
 
-### 4·A  split & resamples
 split  <- initial_split(df_model, prop = .8)
 train  <- training(split)
 test   <- testing(split)
 folds  <- group_vfold_cv(train, group = country, v = 5)
 
-### 4·B  recipe
-rec <- recipe(life_expectancy_z ~ ., data = train) %>%
+# 4·B: Recipe (predict log_gdp_per_capita_z)
+rec <- recipe(log_gdp_per_capita_z ~ ., data = train) %>%
   update_role(country, year, new_role = "id")
 
-### 4·C  linear regression
-log_msg("▶ Starting linear‑model cross‑validation …")
+# 4·C: Linear Regression
+log_msg("▶ Starting linear‑model CV for GDP …")
 lm_wf   <- workflow(rec, linear_reg() %>% set_engine("lm"))
 lm_fit  <- lm_wf %>% fit_resamples(folds, control = control_resamples(save_workflow = TRUE))
 lm_final <- lm_wf %>% fit(train)
@@ -258,64 +256,54 @@ print(lm_metrics)
 lm_test <- lm_final %>%
   predict(test) %>%
   bind_cols(test) %>%
-  metrics(truth = life_expectancy_z, estimate = .pred)
+  metrics(truth = log_gdp_per_capita_z, estimate = .pred)
 
-lm_aug <- lm_final %>%                      # workflow
-  predict(test) %>%                         # 1. predictions (.pred)
-  bind_cols(test) %>%                       # 2. add truth
-  mutate(                                   # 3. residuals & std‑resid
-    resid      = life_expectancy_z - .pred,
-    resid_std  = scale(resid)[, 1]
+lm_aug <- lm_final %>%
+  predict(test) %>%
+  bind_cols(test) %>%
+  mutate(
+    resid     = log_gdp_per_capita_z - .pred,
+    resid_std = scale(resid)[,1]
   )
 
 p_resid <- ggplot(lm_aug, aes(.pred, resid)) +
   geom_point(alpha = .3) +
   geom_hline(yintercept = 0, lty = 2) +
-  labs(title = "Linear Model – Residuals vs Fitted",
-       x = "Fitted (.pred)", y = "Residuals")
+  labs(title = "Linear Model – Residuals vs Fitted (GDP)",
+       x = "Fitted (.pred)", y = "Residuals (z)") +
+  theme_minimal()
 
-ggsave("plots/lm_residuals_vs_fitted.png",
-       plot = p_resid, width = 6, height = 4, dpi = 300)
-log_msg("Saved lm_residuals_vs_fitted.png")
+ggsave("plots/lm_residuals_vs_fitted_gdp.png", p_resid, width = 6, height = 4, dpi = 300)
 print(p_resid)
-
-
 
 p_qq <- ggplot(lm_aug, aes(sample = resid_std)) +
   stat_qq(alpha = .4) + stat_qq_line() +
-  labs(title = "Linear Model – Normal Q‑Q")
+  labs(title = "Linear Model – Normal Q‑Q (GDP)") +
+  theme_minimal()
 
-ggsave("plots/lm_qq_plot.png",
-       plot = p_qq, width = 6, height = 4, dpi = 300)
-log_msg("Saved lm_qq_plot.png")
-
+ggsave("plots/lm_qq_plot_gdp.png", p_qq, width = 6, height = 4, dpi = 300)
 print(p_qq)
 
-### 4·D  random‑forest
-rf_spec <- rand_forest(trees = 1000,
-                       mtry  = tune(),
-                       min_n = tune()) %>%
+# 4·D: Random Forest
+rf_spec <- rand_forest(trees = 1000, mtry = tune(), min_n = tune()) %>%
   set_engine("ranger", importance = "permutation") %>%
   set_mode("regression")
 
 rf_wf <- workflow(rec, rf_spec)
 
 rf_grid <- grid_regular(
-  mtry(range = c(2, 5)),
-  min_n(range = c(3, 15)),
-  levels = 4)
+  mtry(range = c(2, 6)),
+  min_n(range = c(3, 20)),
+  levels = 4
+)
 
-log_msg("▶ Tuning random‑forest (grid search) …")
-
+log_msg("▶ Tuning random‑forest for GDP …")
 rf_tuned <- tune_grid(rf_wf, folds, grid = rf_grid, metrics = metric_set(rmse, rsq))
-
-rf_best <- select_best(rf_tuned, metric = "rmse")
-
+rf_best  <- select_best(rf_tuned, metric = "rmse")
 log_msg(sprintf("✓ RF tuning done — best rmse = %.3f", rf_best$mean))
 
 rf_final <- finalize_workflow(rf_wf, rf_best) %>%
   fit(train)
-
 
 rf_metrics <- rf_tuned %>% collect_metrics()
 print(rf_metrics)
@@ -323,7 +311,7 @@ print(rf_metrics)
 rf_test <- rf_final %>%
   predict(test) %>%
   bind_cols(test) %>%
-  metrics(truth = life_expectancy_z, estimate = .pred)
+  metrics(truth = log_gdp_per_capita_z, estimate = .pred)
 
 p_vip <- rf_final %>%
   extract_fit_parsnip() %>%
@@ -331,28 +319,55 @@ p_vip <- rf_final %>%
   ggplot(aes(Importance, reorder(Variable, Importance))) +
   geom_col() +
   coord_flip() +
-  labs(title = "Random‑Forest – Variable Importance",
-       y = NULL)
+  labs(title = "Random‑Forest – Variable Importance for GDP") +
+  theme_minimal()
 
-ggsave("plots/rf_variable_importance.png",
-       plot   = p_vip,
-       width  = 7, height = 4, dpi = 300)
+ggsave("plots/rf_variable_importance_gdp.png", p_vip, width = 7, height = 4, dpi = 300)
+print(p_vip)
 
-print(p_vip) 
-
-### 4·E  compare
+# 4·E: Compare Models
 compare_tbl <- bind_rows(
-  lm_test %>% mutate(model = "Linear"),
-  rf_test %>% mutate(model = "Random‑Forest")
+  lm_test   %>% mutate(model = "Linear"),
+  rf_test   %>% mutate(model = "Random‑Forest")
 ) %>%
   select(model, .metric, .estimate) %>%
   pivot_wider(names_from = .metric, values_from = .estimate)
 
 print(compare_tbl)
-write_csv(compare_tbl, "plots/model_comparison_metrics.csv")
+write_csv(compare_tbl, "plots/model_comparison_metrics_gdp.csv")
 
-### 4·F  coefficients
-lm_parsnip <- extract_fit_parsnip(lm_final)   # pull the lm object
-
-tidy_coeffs <- tidy(lm_parsnip, conf.int = TRUE)   # now it works
+# 4·F: Coefficients (Linear Model)
+lm_parsnip  <- extract_fit_parsnip(lm_final)
+tidy_coeffs <- tidy(lm_parsnip, conf.int = TRUE)
 print(tidy_coeffs)
+
+threshold <- median(test$log_gdp_per_capita_z, na.rm = TRUE)
+
+# 4·G: Confusion Matrices (High vs Low GDP)
+threshold   <- median(test$log_gdp_per_capita_z, na.rm = TRUE)
+
+# pull raw prediction vectors once
+lm_pred_vec <- predict(lm_final, test) %>% pull(.pred)
+rf_pred_vec <- predict(rf_final, test) %>% pull(.pred)
+
+class_tbl <- test %>%
+  mutate(
+    actual   = factor(
+      if_else(log_gdp_per_capita_z > threshold, "High", "Low"),
+      levels = c("Low","High")
+    ),
+    pred_lin = factor(
+      if_else(lm_pred_vec > threshold,        "High", "Low"),
+      levels = c("Low","High")
+    ),
+    pred_rf  = factor(
+      if_else(rf_pred_vec > threshold,        "High", "Low"),
+      levels = c("Low","High")
+    )
+  )
+
+cm_lin <- class_tbl %>% conf_mat(truth = actual, estimate = pred_lin)
+cm_rf  <- class_tbl %>% conf_mat(truth = actual, estimate = pred_rf)
+
+print(cm_lin)
+print(cm_rf)
