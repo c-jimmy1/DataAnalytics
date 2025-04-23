@@ -28,7 +28,7 @@ indicator_cols <- c(
   "sh_xpd_chex_pc_cd",  # Current health expenditure per capita
   "se_adt_litr_zs",     # Adult literacy rate (% ages 15+)
   "se_prm_enrr"         # Primary school enrolment ratio (% gross)
-)
+).
 
 
 
@@ -79,8 +79,6 @@ print(missing_pct_analysis)
 # ===============================================================
 # 3. Exploratory Analysis, Data Cleaning & Preparation
 # ===============================================================
-library(zoo)
-library(scales)
 
 # Median imputation to replace missing vals with median value of respective col
 df_clean <- df_analysis %>% 
@@ -306,7 +304,7 @@ rf_final <- finalize_workflow(rf_wf, rf_best) %>%
   fit(train)
 
 rf_metrics <- rf_tuned %>% collect_metrics()
-print(rf_metrics)
+print(n = 32, rf_metrics)
 
 rf_test <- rf_final %>%
   predict(test) %>%
@@ -371,3 +369,4 @@ cm_rf  <- class_tbl %>% conf_mat(truth = actual, estimate = pred_rf)
 
 print(cm_lin)
 print(cm_rf)
+
