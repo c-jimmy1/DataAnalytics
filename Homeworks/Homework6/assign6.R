@@ -28,6 +28,7 @@ num_dist_plot <- data %>%
   ggplot(aes(value)) +
   facet_wrap(~name, scales = "free") +
   geom_histogram(bins = 30)
+num_dist_plot
 
 # Categorical Balance
 cat_balance_plot <- data %>% 
@@ -36,6 +37,7 @@ cat_balance_plot <- data %>%
   geom_col() +
   coord_flip() +
   labs(y = "Count", x = NULL)
+cat_balance_plot
 
 # Correlation matrix (numeric predictors)
 num_vars <- data %>% 
@@ -76,6 +78,7 @@ lm_wf <- workflow() %>%
 lm_fit <- lm_wf %>% fit(data)
 
 aug <- augment(lm_fit, new_data = data)   # gives .pred and .resid
+metrics(aug, truth = bmi, estimate = .pred)
 
 resid_vs_fitted_plot <- ggplot(aug, aes(.pred, .resid)) +                # <- use .pred
   geom_point(alpha = .6) +
@@ -129,8 +132,9 @@ cls_final_fit <- cls_final_wf %>% fit(train)
 test_preds <- predict(cls_final_fit, test, type = "prob") %>% 
   bind_cols(predict(cls_final_fit, test)) %>% 
   bind_cols(test %>% select(n_obeyesdad))
+summary(test_preds)
 
-library(yardstick)
+library(test_predslibrary(yardstick)
 library(forcats)
 
 ## Confusion-matrix heat-map (blue→red)
